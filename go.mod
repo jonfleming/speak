@@ -1,4 +1,4 @@
-module speechify
+module github.com/jonfleming/speechify
 
 go 1.23.2
 
