@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"path/filepath"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 const (
 	apiBaseURL = "https://api.sws.speechify.com"
 	voiceID    = "bwyneth"
-	filePath   = "./audio.mp3"
+	outputFile   = "./audio.mp3"
 	maxLen     = 2500
 )
 
@@ -70,14 +71,29 @@ func getAudio(text string) ([]byte, error) {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Error loading .env file", err)
-	}
+    execPath, err := os.Executable()
+    if err != nil {
+        fmt.Println("Error getting executable path:", err)
+        os.Exit(1)
+    }
+
+    execDir := filepath.Dir(execPath)
+    envPath := filepath.Join(execDir, ".env")
+
+    // Try loading .env from the executable's directory
+    err = godotenv.Load(envPath)
+    if err != nil {
+        // Fall back to loading .env from the current working directory
+        err = godotenv.Load()
+        if err != nil {
+            fmt.Println("Error loading .env file", err)
+            os.Exit(1)
+        }
+    }
 
 	apiKey = os.Getenv("API_KEY")
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run tts.go <filename>")
+		fmt.Println("Usage: speak <filename>")
 		os.Exit(1)
 	}
 
@@ -105,10 +121,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := ioutil.WriteFile(filePath, audioData, 0644); err != nil {
+	if err := ioutil.WriteFile(outputFile, audioData, 0644); err != nil {
 		fmt.Println("Error writing file:", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("Audio file saved as", filePath)
+	fmt.Println("Audio file saved as", outputFile)
 }
