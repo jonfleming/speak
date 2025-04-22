@@ -94,19 +94,40 @@ func main() {
     }
 
 	apiKey = os.Getenv("API_KEY")
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: speak <filename>")
-		os.Exit(1)
-	}
 
-	filename := os.Args[1]
-	fileContent, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Println("Error reading file:", err)
-		os.Exit(1)
-	}
+    var text string
 
-	text := string(fileContent)
+    // Check if input is being piped via stdin
+    fileInfo, err := os.Stdin.Stat()
+    if err != nil {
+        fmt.Println("Error checking stdin:", err)
+        os.Exit(1)
+    }
+
+    if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+        // Read from stdin
+        input, err := ioutil.ReadAll(os.Stdin)
+        if err != nil {
+            fmt.Println("Error reading from stdin:", err)
+            os.Exit(1)
+        }
+        text = string(input)
+    } else {
+        // Read from file if no stdin input
+        if len(os.Args) < 2 {
+            fmt.Println("Usage: speak <filename> or pipe text via stdin")
+            os.Exit(1)
+        }
+
+        filename := os.Args[1]
+        fileContent, err := ioutil.ReadFile(filename)
+        if err != nil {
+            fmt.Println("Error reading file:", err)
+            os.Exit(1)
+        }
+        text = string(fileContent)
+    }
+
 	if len(text) == 0 {
 		fmt.Println("No text provided in file.")
 		os.Exit(1)
