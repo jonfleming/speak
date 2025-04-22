@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+   "os/exec"
+   "runtime"
 
 	"github.com/joho/godotenv"
 )
@@ -114,17 +116,50 @@ func main() {
 		text = text[:maxLen]
 	}
 
-	fmt.Println("Text: ", text)
+	fmt.Println("Playing: ", text)
 	audioData, err := getAudio(text)
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
 	}
 
-	if err := ioutil.WriteFile(outputFile, audioData, 0644); err != nil {
-		fmt.Println("Error writing file:", err)
-		os.Exit(1)
-	}
+   // Write audio to a temporary file for playback
+   tmpFile, err := ioutil.TempFile("", "speak-*.mp3")
+   if err != nil {
+       fmt.Println("Error creating temp file:", err)
+       os.Exit(1)
+   }
+   defer os.Remove(tmpFile.Name())
 
-	fmt.Println("Audio file saved as", outputFile)
+   if _, err := tmpFile.Write(audioData); err != nil {
+       fmt.Println("Error writing to temp file:", err)
+       os.Exit(1)
+   }
+   if err := tmpFile.Close(); err != nil {
+       fmt.Println("Error closing temp file:", err)
+       os.Exit(1)
+   }
+
+   // Determine playback command based on OS
+   var cmd *exec.Cmd
+   switch runtime.GOOS {
+   case "darwin":
+       cmd = exec.Command("afplay", tmpFile.Name())
+   case "linux":
+       cmd = exec.Command("play", tmpFile.Name())
+   case "windows":
+       cmd = exec.Command("cmdmp3", tmpFile.Name())
+   default:
+       fmt.Println("Unsupported OS for audio playback:", runtime.GOOS)
+       os.Exit(1)
+   }
+//    cmd.Stdout = os.Stdout
+//    cmd.Stderr = os.Stderr
+   cmd.Stdout = ioutil.Discard
+   cmd.Stderr = ioutil.Discard
+
+   if err := cmd.Run(); err != nil {
+       fmt.Println("Error playing audio:", err)
+       os.Exit(1)
+   }
 }
