@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"path/filepath"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
-    "os/exec"
-    "runtime"
+	"os/exec"
+	"path/filepath"
+	"runtime"
 
 	"github.com/joho/godotenv"
 )
@@ -18,7 +18,7 @@ import (
 const (
 	apiBaseURL = "https://api.sws.speechify.com"
 	voiceID    = "bwyneth"
-	outputFile   = "./audio.mp3"
+	outputFile = "./audio.mp3"
 	maxLen     = 2500
 )
 
@@ -35,6 +35,7 @@ type AudioResponse struct {
 }
 
 func getAudio(text string) ([]byte, error) {
+	fmt.Println("Audio Request")
 	requestBody, err := json.Marshal(AudioRequest{
 		Input:       fmt.Sprintf("<speak>%s</speak>", text),
 		VoiceID:     voiceID,
@@ -58,6 +59,7 @@ func getAudio(text string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	fmt.Println("POST response status:", resp.Status)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
@@ -73,60 +75,60 @@ func getAudio(text string) ([]byte, error) {
 }
 
 func main() {
-    execPath, err := os.Executable()
-    if err != nil {
-        fmt.Println("Error getting executable path:", err)
-        os.Exit(1)
-    }
+	execPath, err := os.Executable()
+	if err != nil {
+		fmt.Println("Error getting executable path:", err)
+		os.Exit(1)
+	}
 
-    execDir := filepath.Dir(execPath)
-    envPath := filepath.Join(execDir, ".env")
+	execDir := filepath.Dir(execPath)
+	envPath := filepath.Join(execDir, ".env")
 
-    // Try loading .env from the executable's directory
-    err = godotenv.Load(envPath)
-    if err != nil {
-        // Fall back to loading .env from the current working directory
-        err = godotenv.Load()
-        if err != nil {
-            fmt.Println("Error loading .env file", err)
-            os.Exit(1)
-        }
-    }
+	// Try loading .env from the executable's directory
+	err = godotenv.Load(envPath)
+	if err != nil {
+		// Fall back to loading .env from the current working directory
+		err = godotenv.Load()
+		if err != nil {
+			fmt.Println("Error loading .env file", err)
+			os.Exit(1)
+		}
+	}
 
 	apiKey = os.Getenv("API_KEY")
 
-    var text string
+	var text string
 
-    // Check if input is being piped via stdin
-    fileInfo, err := os.Stdin.Stat()
-    if err != nil {
-        fmt.Println("Error checking stdin:", err)
-        os.Exit(1)
-    }
+	// Check if input is being piped via stdin
+	fileInfo, err := os.Stdin.Stat()
+	if err != nil {
+		fmt.Println("Error checking stdin:", err)
+		os.Exit(1)
+	}
 
-    if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
-        // Read from stdin
-        input, err := ioutil.ReadAll(os.Stdin)
-        if err != nil {
-            fmt.Println("Error reading from stdin:", err)
-            os.Exit(1)
-        }
-        text = string(input)
-    } else {
-        // Read from file if no stdin input
-        if len(os.Args) < 2 {
-            fmt.Println("Usage: speak <filename> or pipe text via stdin")
-            os.Exit(1)
-        }
+	if (fileInfo.Mode() & os.ModeCharDevice) == 0 {
+		// Read from stdin
+		input, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			fmt.Println("Error reading from stdin:", err)
+			os.Exit(1)
+		}
+		text = string(input)
+	} else {
+		// Read from file if no stdin input
+		if len(os.Args) < 2 {
+			fmt.Println("Usage: speak <filename> or pipe text via stdin")
+			os.Exit(1)
+		}
 
-        filename := os.Args[1]
-        fileContent, err := ioutil.ReadFile(filename)
-        if err != nil {
-            fmt.Println("Error reading file:", err)
-            os.Exit(1)
-        }
-        text = string(fileContent)
-    }
+		filename := os.Args[1]
+		fileContent, err := ioutil.ReadFile(filename)
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			os.Exit(1)
+		}
+		text = string(fileContent)
+	}
 
 	if len(text) == 0 {
 		fmt.Println("No text provided in file.")
@@ -144,43 +146,43 @@ func main() {
 		os.Exit(1)
 	}
 
-   // Write audio to a temporary file for playback
-   tmpFile, err := ioutil.TempFile("", "speak-*.mp3")
-   if err != nil {
-       fmt.Println("Error creating temp file:", err)
-       os.Exit(1)
-   }
-   defer os.Remove(tmpFile.Name())
+	// Write audio to a temporary file for playback
+	tmpFile, err := os.CreateTemp("", "speak-*.mp3")
+	if err != nil {
+		fmt.Println("Error creating temp file:", err)
+		os.Exit(1)
+	}
+	defer os.Remove(tmpFile.Name())
 
-   if _, err := tmpFile.Write(audioData); err != nil {
-       fmt.Println("Error writing to temp file:", err)
-       os.Exit(1)
-   }
-   if err := tmpFile.Close(); err != nil {
-       fmt.Println("Error closing temp file:", err)
-       os.Exit(1)
-   }
+	if _, err := tmpFile.Write(audioData); err != nil {
+		fmt.Println("Error writing to temp file:", err)
+		os.Exit(1)
+	}
+	if err := tmpFile.Close(); err != nil {
+		fmt.Println("Error closing temp file:", err)
+		os.Exit(1)
+	}
 
-   // Determine playback command based on OS
-   var cmd *exec.Cmd
-   switch runtime.GOOS {
-   case "darwin":
-       cmd = exec.Command("afplay", tmpFile.Name())
-   case "linux":
-       cmd = exec.Command("play", tmpFile.Name())
-   case "windows":
-       cmd = exec.Command("cmdmp3", tmpFile.Name())
-   default:
-       fmt.Println("Unsupported OS for audio playback:", runtime.GOOS)
-       os.Exit(1)
-   }
-//    cmd.Stdout = os.Stdout
-//    cmd.Stderr = os.Stderr
-   cmd.Stdout = ioutil.Discard
-   cmd.Stderr = ioutil.Discard
+	// Determine playback command based on OS
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("afplay", tmpFile.Name())
+	case "linux":
+		cmd = exec.Command("play", tmpFile.Name())
+	case "windows":
+		cmd = exec.Command("cmdmp3", tmpFile.Name())
+	default:
+		fmt.Println("Unsupported OS for audio playback:", runtime.GOOS)
+		os.Exit(1)
+	}
+	//    cmd.Stdout = os.Stdout
+	//    cmd.Stderr = os.Stderr
+	cmd.Stdout = ioutil.Discard
+	cmd.Stderr = ioutil.Discard
 
-   if err := cmd.Run(); err != nil {
-       fmt.Println("Error playing audio:", err)
-       os.Exit(1)
-   }
+	if err := cmd.Run(); err != nil {
+		fmt.Println("Error playing audio:", err)
+		os.Exit(1)
+	}
 }
