@@ -170,7 +170,7 @@ func main() {
 	case "darwin":
 		cmd = exec.Command("afplay", tmpFile.Name())
 	case "linux":
-		cmd = exec.Command("mpg123", tmpFile.Name())
+		cmd = exec.Command("play", tmpFile.Name(), "vol", "2.0")
 	case "windows":
 		cmd = exec.Command("cmdmp3", tmpFile.Name())
 	default:
