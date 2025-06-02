@@ -50,6 +50,7 @@ func getAudio(text string) ([]byte, error) {
 		return nil, err
 	}
 
+	fmt.Println("Authorization Header:", fmt.Sprintf("Bearer %s", apiKey))
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 	req.Header.Set("Content-Type", "application/json")
 
